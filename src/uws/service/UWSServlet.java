@@ -45,6 +45,7 @@ import uws.UWSExceptionFactory;
 import uws.UWSToolBox;
 import uws.job.ErrorSummary;
 import uws.job.ErrorType;
+import uws.job.ExecutionPhase;
 import uws.job.JobList;
 import uws.job.JobThread;
 import uws.job.Result;
@@ -132,7 +133,7 @@ import uws.service.request.UploadFile;
  * </p>
  * 
  * @author Gr&eacute;gory Mantelet (CDS;ARI)
- * @version 4.1 (02/2015)
+ * @version 4.2 (03/2015)
  */
 public abstract class UWSServlet extends HttpServlet implements UWS, UWSFactory {
 	private static final long serialVersionUID = 1L;
@@ -477,13 +478,14 @@ public abstract class UWSServlet extends HttpServlet implements UWS, UWSFactory 
 	protected void doListJob(UWSUrl requestUrl, HttpServletRequest req, HttpServletResponse resp, JobOwner user) throws UWSException, ServletException, IOException{
 		// Get the jobs list:
 		JobList jobsList = getJobList(requestUrl.getJobListName());
-
+		
 		// Write the jobs list:
 		UWSSerializer serializer = getSerializer(req.getHeader("Accept"));
 		resp.setContentType(serializer.getMimeType());
 		try{
-			jobsList.serialize(resp.getOutputStream(), serializer, user);
+			jobsList.serialize(resp.getOutputStream(), serializer, user, UWSToolBox.getPhaseFilters(req));
 		}catch(Exception e){
+			e.printStackTrace();
 			if (!(e instanceof UWSException)){
 				getLogger().logUWS(LogLevel.ERROR, requestUrl, "SERIALIZE", "Can not serialize the jobs list \"" + jobsList.getName() + "\"!", e);
 				throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e, "Can not format properly the jobs list \"" + jobsList.getName() + "\"!");

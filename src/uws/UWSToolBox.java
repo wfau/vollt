@@ -30,6 +30,7 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.Enumeration;
 import java.util.HashMap;
@@ -40,6 +41,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import uws.job.ErrorSummary;
+import uws.job.ExecutionPhase;
 import uws.job.UWSJob;
 import uws.job.user.JobOwner;
 import uws.service.UWS;
@@ -237,6 +239,61 @@ public class UWSToolBox {
 		}
 
 		return parameters;
+	}
+	
+	/**
+	 * <p>Get the list of all execution phase restrictions given in HTTP-GET parameters.</p>
+	 * 
+	 * <p>This function gets all found "PHASE" parameters whatever is their case.</p>
+	 * 
+	 * <p>
+	 * 	It uses the {@link HttpServletRequest#getParameterValues(String)} which is fairly enough since ListJobs
+	 * 	is an HTTP-GET request only. It means that parameters can only be provided in the URL.
+	 * </p>
+	 * 
+	 * <p>Values which are not legal execution phases are silently ignored.</p>
+	 * 
+	 * @param request	HTTP request.
+	 * 
+	 * @return	Array of given execution phases (may contain duplicated values, but no null and no unknown value),
+	 *        	or NULL if no phase filter is specified.
+	 * 
+	 * @since 4.2
+	 */
+	public static final ExecutionPhase[] getPhaseFilters(final HttpServletRequest request){
+		String pName;
+		String[] phases;
+		ArrayList<ExecutionPhase> lstPhases = new ArrayList<ExecutionPhase>();
+		
+		// Get all parameters' names:
+		Enumeration<String> paramNames = request.getParameterNames();
+		while(paramNames.hasMoreElements()){
+			pName = paramNames.nextElement();
+			// process only PHASE parameters (case INsensitively):
+			if(pName.toUpperCase().equals("PHASE")){
+				// get all values for this parameter name:
+				phases = request.getParameterValues(pName);
+				for(String p : phases){
+					if (p != null){
+						// resolve the execution phase:
+						try{
+							lstPhases.add(ExecutionPhase.valueOf(p.toUpperCase()));
+						}catch(Throwable t){
+							/* If not a legal/known execution phase,
+							 * nothing is done and no error is logged or thrown. */
+						}
+					}
+				}
+			}
+		}
+		
+		// If at least one execution phase has been successfully identified, return an array:
+		if (lstPhases.size() > 0)
+			return lstPhases.toArray(new ExecutionPhase[lstPhases.size()]);
+		
+		// Otherwise, NULL is returned:
+		else
+			return null;
 	}
 
 	/**

@@ -16,14 +16,17 @@ package uws.job;
  * You should have received a copy of the GNU Lesser General Public License
  * along with UWSLibrary.  If not, see <http://www.gnu.org/licenses/>.
  * 
- * Copyright 2012,2014 - UDS/Centre de Données astronomiques de Strasbourg (CDS),
+ * Copyright 2012-2015 - UDS/Centre de Données astronomiques de Strasbourg (CDS),
  *                       Astronomisches Rechen Institut (ARI)
  */
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map;
+
+import javax.servlet.ServletOutputStream;
 
 import uws.UWSException;
 import uws.UWSExceptionFactory;
@@ -97,7 +100,7 @@ import uws.service.log.UWSLog.LogLevel;
  * </p>
  * 
  * @author Gr&eacute;gory Mantelet (CDS;ARI)
- * @version 4.1 (11/2014)
+ * @version 4.2 (03/2015)
  * 
  * @see UWSJob
  */
@@ -711,6 +714,39 @@ public class JobList extends SerializableUWSObject implements Iterable<UWSJob> {
 				ownerJobs.remove(owner);
 			}
 		}
+	}
+	
+	/**
+	 * Serializes the while object in the given output stream,
+	 * considering the given owner ID, the given execution phase restrictions
+	 * and thanks to the given serializer.
+	 * 
+	 * @param output		The ouput stream in which this object must be serialized.
+	 * @param serializer	The serializer to use.
+	 * @param ownerId		The ID of the current ID.
+	 * @param phaseFilters	Specify the execution phase of only the jobs to display. 
+	 * 
+	 * @throws UWSException		If the owner is not allowed to see the content of the serializable object.
+	 * @throws IOException		If there is an error while writing in the given stream. 
+	 * @throws Exception		If there is any other error during the serialization.
+	 * 
+	 * @see UWSSerializer#getJobList(JobList, JobOwner, ExecutionPhase[], boolean)
+	 * 
+	 * @since 4.2
+	 */
+	public void serialize(ServletOutputStream output, UWSSerializer serializer, JobOwner owner, ExecutionPhase[] phaseFilters) throws UWSException, IOException, Exception{
+		if (output == null)
+			throw new NullPointerException("Missing serialization output stream!");
+
+		if (owner != null && !owner.hasReadPermission(this))
+			throw new UWSException(UWSException.PERMISSION_DENIED, UWSExceptionFactory.writePermissionDenied(owner, true, getName()));
+
+		String serialization = serializer.getJobList(this, owner, phaseFilters, true);
+		if (serialization != null){
+			output.print(serialization);
+			output.flush();
+		}else
+			throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, "Incorrect serialization value (=NULL) ! => impossible to serialize " + toString() + ".");
 	}
 
 	/* ***************** */

@@ -25,6 +25,7 @@ import org.json.Json4Uws;
 
 import uws.ISO8601Format;
 import uws.job.ErrorSummary;
+import uws.job.ExecutionPhase;
 import uws.job.JobList;
 import uws.job.Result;
 import uws.job.UWSJob;
@@ -54,8 +55,8 @@ public class JSONSerializer extends UWSSerializer {
 	}
 
 	@Override
-	public String getJobList(final JobList jobsList, final JobOwner owner, final boolean root) throws JSONException{
-		return Json4Uws.getJson(jobsList, owner).toString();
+	public String getJobList(final JobList jobsList, final JobOwner owner, final ExecutionPhase[] phaseFilters, final boolean root) throws JSONException{
+		return Json4Uws.getJson(jobsList, owner, phaseFilters).toString();
 	}
 
 	@Override

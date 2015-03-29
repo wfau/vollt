@@ -26,6 +26,7 @@ import java.util.Iterator;
 
 import uws.ISO8601Format;
 import uws.job.ErrorSummary;
+import uws.job.ExecutionPhase;
 import uws.job.JobList;
 import uws.job.Result;
 import uws.job.UWSJob;
@@ -38,7 +39,7 @@ import uws.service.request.UploadFile;
  * Lets serializing any UWS resource in XML.
  * 
  * @author Gr&eacute;gory Mantelet (CDS;ARI)
- * @version 4.1 (02/2015)
+ * @version 4.2 (03/2015)
  */
 public class XMLSerializer extends UWSSerializer {
 	private static final long serialVersionUID = 1L;
@@ -163,7 +164,7 @@ public class XMLSerializer extends UWSSerializer {
 	}
 
 	@Override
-	public String getJobList(final JobList jobsList, final JobOwner owner, final boolean root){
+	public String getJobList(JobList jobsList, JobOwner owner, ExecutionPhase[] phaseFilters, boolean root) throws Exception {
 		StringBuffer xml = new StringBuffer(getHeader());
 
 		xml.append("<jobs").append(getUWSNamespace(true));
@@ -176,8 +177,24 @@ public class XMLSerializer extends UWSSerializer {
 
 		UWSUrl jobsListUrl = jobsList.getUrl();
 		Iterator<UWSJob> it = jobsList.getJobs(owner);
-		while(it.hasNext())
-			xml.append("\n\t").append(getJobRef(it.next(), jobsListUrl));
+		if (phaseFilters == null || phaseFilters.length == 0){
+			while(it.hasNext())
+				xml.append("\n\t").append(getJobRef(it.next(), jobsListUrl));
+		}else{
+			int p;
+			UWSJob job= null;
+			boolean toDisplay;
+			while(it.hasNext()){
+				job = it.next();
+				toDisplay = false;
+				for(p=0; !toDisplay && p<phaseFilters.length; p++){
+					if (phaseFilters[p] != null)
+						toDisplay = (job.getPhase() == phaseFilters[p]);
+				}
+				if (toDisplay)
+					xml.append("\n\t").append(getJobRef(job, jobsListUrl));
+			}
+		}
 
 		xml.append("\n</jobs>");
 

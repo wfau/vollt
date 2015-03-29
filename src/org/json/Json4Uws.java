@@ -16,7 +16,7 @@ package org.json;
  * You should have received a copy of the GNU Lesser General Public License
  * along with UWSLibrary.  If not, see <http://www.gnu.org/licenses/>.
  * 
- * Copyright 2012,2014 - UDS/Centre de Données astronomiques de Strasbourg (CDS),
+ * Copyright 2012-2015 - UDS/Centre de Données astronomiques de Strasbourg (CDS),
  *                       Astronomisches Rechen Institut (ARI)
  */
 
@@ -24,6 +24,7 @@ import java.util.Iterator;
 
 import uws.ISO8601Format;
 import uws.job.ErrorSummary;
+import uws.job.ExecutionPhase;
 import uws.job.JobList;
 import uws.job.Result;
 import uws.job.UWSJob;
@@ -35,7 +36,7 @@ import uws.service.UWSUrl;
  * Useful conversion functions from UWS to JSON.
  * 
  * @author Gr&eacute;gory Mantelet (CDS;ARI)
- * @version 4.1 (12/2014)
+ * @version 4.2 (03/2015)
  */
 public final class Json4Uws {
 
@@ -76,19 +77,59 @@ public final class Json4Uws {
 	 * @param owner				The user who asks to serialize the given jobs list. (MAY BE NULL)
 	 * @return					Its JSON representation.
 	 * @throws JSONException	If there is an error while building the JSON object.
+	 * @see #getJson(JobList, JobOwner, ExecutionPhase[])
 	 */
 	public final static JSONObject getJson(final JobList jobsList, final JobOwner owner) throws JSONException{
+		return getJson(jobsList, owner, null);
+	}
+	
+	/**
+	 * Gets the JSON representation of the given jobs list by filtering by owner and execution phase.
+	 * @param jobsList			The jobs list to represent in JSON.
+	 * @param owner				The user who asks to serialize the given jobs list. (MAY BE NULL)
+	 * @param phaseFilters		Specify the phase of only the jobs to display. If null or empty, no filter is applied.
+	 * 
+	 * @return					Its JSON representation.
+	 * 
+	 * @throws JSONException	If there is an error while building the JSON object.
+	 * 
+	 * @since 4.2
+	 */
+	public final static JSONObject getJson(final JobList jobsList, final JobOwner owner, ExecutionPhase[] phaseFilters) throws JSONException{
 		JSONObject json = new JSONObject();
 		if (jobsList != null){
 			json.put("name", jobsList.getName());
 			JSONArray jsonJobs = new JSONArray();
 			UWSUrl jobsListUrl = jobsList.getUrl();
-			Iterator<UWSJob> it = jobsList.getJobs(owner);
-			JSONObject jsonObj = null;
-			while(it.hasNext()){
-				jsonObj = getJson(it.next(), jobsListUrl, true);
-				if (jsonObj != null)
-					jsonJobs.put(jsonObj);
+			
+			// No phase filter:
+			if (phaseFilters == null || phaseFilters.length ==0){
+				Iterator<UWSJob> it = jobsList.getJobs(owner);
+				JSONObject jsonObj = null;
+				while(it.hasNext()){
+					jsonObj = getJson(it.next(), jobsListUrl, true);
+					if (jsonObj != null)
+						jsonJobs.put(jsonObj);
+				}
+			}
+			// One or more phase filter(s):
+			else{
+				int p;
+				UWSJob job= null;
+				boolean toDisplay;
+				JSONObject jsonObj = null;
+				Iterator<UWSJob> it = jobsList.getJobs(owner);
+				while(it.hasNext()){
+					job = it.next();
+					toDisplay = (phaseFilters.length < 0);
+					for(p=0; !toDisplay && p<phaseFilters.length; p++)
+						toDisplay = (job.getPhase() == phaseFilters[p]);
+					if (toDisplay){
+						jsonObj = getJson(job, jobsListUrl, true);
+						if (jsonObj != null)
+							jsonJobs.put(jsonObj);
+					}
+				}
 			}
 			json.put("jobs", jsonJobs);
 		}
