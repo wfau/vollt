@@ -16,7 +16,8 @@ package uws.job;
  * You should have received a copy of the GNU Lesser General Public License
  * along with UWSLibrary.  If not, see <http://www.gnu.org/licenses/>.
  * 
- * Copyright 2012 - UDS/Centre de Données astronomiques de Strasbourg (CDS)
+ * Copyright 2012,2015 - UDS/Centre de Données astronomiques de Strasbourg (CDS),
+ *                       Astronomisches Rechen Institut (ARI)
  */
 
 /**
@@ -52,15 +53,19 @@ package uws.job;
  *							be because of temporary lack of resource. The UWS will automatically
  *							resume the job into the EXECUTING phase without any intervention
  *							when resource becomes available.</li>
+ *	
+ *	<li>{@link #ARCHIVED}:  At destruction time the results associated with a job have been
+ * 	                        deleted to free up resource, but the metadata associated with the job
+ * 	                        is retained.</li>
  * </ul>
  * 
  * @see UWSJob
  * 
- * @author Gr&eacute;gory Mantelet (CDS)
- * @version 02/2011
+ * @author Gr&eacute;gory Mantelet (CDS;ARI)
+ * @version 4.2 (03/2015)
  */
 public enum ExecutionPhase{
-	PENDING, QUEUED, EXECUTING, COMPLETED, ERROR, ABORTED, UNKNOWN, HELD, SUSPENDED;
+	PENDING, QUEUED, EXECUTING, COMPLETED, ERROR, ABORTED, UNKNOWN, HELD, SUSPENDED, ARCHIVED;
 
 	public static final String getStr(ExecutionPhase ph){
 		return (ph == null) ? ExecutionPhase.UNKNOWN.name() : ph.name();

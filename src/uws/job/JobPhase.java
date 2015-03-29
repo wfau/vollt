@@ -16,7 +16,7 @@ package uws.job;
  * You should have received a copy of the GNU Lesser General Public License
  * along with UWSLibrary.  If not, see <http://www.gnu.org/licenses/>.
  * 
- * Copyright 2012,2014 - UDS/Centre de Données astronomiques de Strasbourg (CDS),
+ * Copyright 2012-2015 - UDS/Centre de Données astronomiques de Strasbourg (CDS),
  *                       Astronomisches Rechen Institut (ARI)
  */
 
@@ -30,7 +30,7 @@ import uws.UWSExceptionFactory;
  * and it describes the transitions between the different phases.
  * 
  * @author Gr&eacute;gory Mantelet (CDS;ARI)
- * @version 4.1 (08/2014)
+ * @version 4.2 (03/2015)
  * 
  * @see ExecutionPhase
  * @see UWSJob
@@ -140,6 +140,9 @@ public class JobPhase implements Serializable {
 			case SUSPENDED:
 				setSuspendedPhase(force);
 				break;
+			case ARCHIVED:
+				setArchivedPhase(force);
+				break;
 			case UNKNOWN:
 			default:
 				setUnknownPhase(force);
@@ -220,13 +223,13 @@ public class JobPhase implements Serializable {
 	 * 
 	 * @param force			<i>true</i> to ignore the phases order, <i>false</i> otherwise.
 	 * 
-	 * @throws UWSException	If this phase transition is forbidden <i>(by default: IF force=false AND currentPhase = COMPLETED or ERROR)</i>.
+	 * @throws UWSException	If this phase transition is forbidden <i>(by default: IF force=false AND currentPhase = COMPLETED, ERROR or ARCHIVED)</i>.
 	 */
 	protected void setAbortedPhase(boolean force) throws UWSException{
 		if (force)
 			phase = ExecutionPhase.ABORTED;
 		else{
-			if (phase == ExecutionPhase.COMPLETED || phase == ExecutionPhase.ERROR)
+			if (phase == ExecutionPhase.COMPLETED || phase == ExecutionPhase.ERROR || phase == ExecutionPhase.ARCHIVED)
 				throw new UWSException(UWSException.BAD_REQUEST, UWSExceptionFactory.incorrectPhaseTransition(job.getJobId(), phase, ExecutionPhase.ABORTED));
 
 			phase = ExecutionPhase.ABORTED;
@@ -272,7 +275,20 @@ public class JobPhase implements Serializable {
 	 * @throws UWSException	By default, never !
 	 */
 	protected void setSuspendedPhase(boolean force) throws UWSException{
+		if (!force && phase != ExecutionPhase.SUSPENDED && phase != ExecutionPhase.EXECUTING && phase != ExecutionPhase.UNKNOWN)
+			throw new UWSException(UWSException.BAD_REQUEST, UWSExceptionFactory.incorrectPhaseTransition(job.getJobId(), phase, ExecutionPhase.SUSPENDED));
 		phase = ExecutionPhase.SUSPENDED;
+	}
+
+	/**
+	 * Changes the current phase to {@link ExecutionPhase#ARCHIVED ARCHIVED}.
+	 * 
+	 * @param force			<i>true</i> to ignore the phases order, <i>false</i> otherwise.
+	 * 
+	 * @throws UWSException	By default, never!
+	 */
+	protected void setArchivedPhase(boolean force) throws UWSException{
+		phase = ExecutionPhase.ARCHIVED;
 	}
 
 	/**
@@ -301,12 +317,12 @@ public class JobPhase implements Serializable {
 	 * <p>Indicates whether the job is finished or not, considering its current phase.</p>
 	 * 
 	 * <p><i><u>Note:</u> By default, it returns TRUE only if the current phase is either {@link ExecutionPhase#COMPLETED COMPLETED},
-	 * {@link ExecutionPhase#ABORTED ABORTED} or {@link ExecutionPhase#ERROR ERROR} !</i></p>
+	 * {@link ExecutionPhase#ABORTED ABORTED}, {@link ExecutionPhase#ERROR ERROR} or {@link ExecutionPhase#ARCHIVED ARCHIVED}!</i></p>
 	 * 
 	 * @return	<i>true</i> if the job is finished, <i>false</i> otherwise.
 	 */
 	public boolean isFinished(){
-		return phase == ExecutionPhase.COMPLETED || phase == ExecutionPhase.ABORTED || phase == ExecutionPhase.ERROR;
+		return phase == ExecutionPhase.COMPLETED || phase == ExecutionPhase.ABORTED || phase == ExecutionPhase.ERROR || phase == ExecutionPhase.ARCHIVED;
 	}
 
 	/**
