@@ -27,6 +27,8 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import uws.UWSException;
+import uws.job.ExecutionPhase;
+import uws.job.JobObserver;
 import uws.job.UWSJob;
 import uws.job.serializer.UWSSerializer;
 import uws.job.user.JobOwner;
@@ -96,6 +98,30 @@ public class JobSummary extends UWSAction {
 	public boolean apply(UWSUrl urlInterpreter, JobOwner user, HttpServletRequest request, HttpServletResponse response) throws UWSException, IOException{
 		// Get the job:
 		UWSJob job = getJob(urlInterpreter);
+		
+		/* TODO Finish the blocking behaviour!
+		 *      The blocking should stop when the request is aborted. */
+		
+		if (request.getParameter("WAIT") != null && (job.getPhase() == ExecutionPhase.PENDING || job.getPhase() == ExecutionPhase.QUEUED || job.getPhase() == ExecutionPhase.EXECUTING)){
+			synchronized(Thread.currentThread()){
+				WaitObserver observer = new WaitObserver(Thread.currentThread());
+				job.addObserver(observer);
+				long waitingTime = 0;
+				try{
+					waitingTime = Long.parseLong(request.getParameter("WAIT"));
+				}catch(NumberFormatException nfe){}
+				try{
+					if (waitingTime > 0)
+						Thread.currentThread().wait(waitingTime*1000);
+					else
+						Thread.currentThread().wait();
+				}catch(Throwable t){
+					t.printStackTrace();
+				}finally{
+					job.removeObserver(observer);
+				}
+			}
+		}
 
 		// Write the job summary:
 		UWSSerializer serializer = uws.getSerializer(request.getHeader("Accept"));
@@ -111,6 +137,27 @@ public class JobSummary extends UWSAction {
 		}
 
 		return true;
+	}
+	
+	public static class WaitObserver implements JobObserver {
+
+		private final Thread waitingThread;
+		
+		public WaitObserver(final Thread thread){
+			waitingThread = thread;
+		}
+		
+		@Override
+		public void update(final UWSJob job, final ExecutionPhase oldPhase, final ExecutionPhase newPhase) throws UWSException {
+			if (oldPhase != null && newPhase != null && oldPhase != newPhase){
+				synchronized(waitingThread){
+					job.removeObserver(this);
+					waitingThread.notify();
+					System.out.println("[DEBUG] OBSERVER UPDATE ("+oldPhase+" -> "+newPhase+")!"); // TODO DEBUG
+				}
+			}
+		}
+		
 	}
 
 }

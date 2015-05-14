@@ -47,6 +47,7 @@ import uws.job.ErrorSummary;
 import uws.job.ErrorType;
 import uws.job.ExecutionPhase;
 import uws.job.JobList;
+import uws.job.JobObserver;
 import uws.job.JobThread;
 import uws.job.Result;
 import uws.job.UWSJob;
@@ -60,6 +61,7 @@ import uws.job.serializer.UWSSerializer;
 import uws.job.serializer.XMLSerializer;
 import uws.job.user.JobOwner;
 import uws.service.actions.UWSAction;
+import uws.service.actions.JobSummary.WaitObserver;
 import uws.service.backup.UWSBackupManager;
 import uws.service.error.DefaultUWSErrorWriter;
 import uws.service.error.ServiceErrorWriter;
@@ -550,6 +552,48 @@ public abstract class UWSServlet extends HttpServlet implements UWS, UWSFactory 
 	protected void doJobSummary(UWSUrl requestUrl, HttpServletRequest req, HttpServletResponse resp, JobOwner user) throws UWSException, ServletException, IOException{
 		// Get the job:
 		UWSJob job = getJob(requestUrl);
+		
+		/* TODO Finish the blocking behaviour!
+		 *      The blocking should stop when the request is aborted. */
+		
+		if (req.getParameter("WAIT") != null && (job.getPhase() == ExecutionPhase.PENDING || job.getPhase() == ExecutionPhase.QUEUED || job.getPhase() == ExecutionPhase.EXECUTING)){
+			synchronized(Thread.currentThread()){
+				WaitObserver observer = new WaitObserver(Thread.currentThread());
+				job.addObserver(observer);
+				long waitingTime = 0;
+				try{
+					waitingTime = Long.parseLong(req.getParameter("WAIT"));
+				}catch(NumberFormatException nfe){}
+				try{
+					if (waitingTime > 0)
+						Thread.currentThread().wait(waitingTime*1000);
+					else{
+						Thread.currentThread().wait(180000); // Wait 3 minutes before redirection
+						if ((job.getPhase() == ExecutionPhase.PENDING || job.getPhase() == ExecutionPhase.QUEUED || job.getPhase() == ExecutionPhase.EXECUTING)){
+							System.out.println("[DEBUG] REDIRECTION TO ITSELF ("+req.getRequestURL()+"?WAIT)"); // TODO DEBUG
+							resp.sendRedirect(req.getRequestURL()+"?WAIT"); // TODO TEST!
+							return;
+						}
+					}
+				}catch(Throwable t){
+					t.printStackTrace();
+				}finally{
+					job.removeObserver(observer);
+					System.out.println("[DEBUG] WAIT STOPPED!"); // TODO DEBUG
+					// TODO DEBUG
+					int countObservers = 0;
+					Iterator<JobObserver> it =job.getObservers();
+					while(it.hasNext()){
+						it.next();
+						countObservers++;
+					}
+					if (countObservers == 0)
+						System.out.println("[DEBUG] No more observers!");
+					else
+						System.err.println("[DEBUG] "+countObservers+" observers!");
+				}
+			}
+		}
 
 		// Write the job summary:
 		UWSSerializer serializer = getSerializer(req.getHeader("Accept"));
