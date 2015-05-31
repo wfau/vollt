@@ -16,7 +16,7 @@ package uws.job;
  * You should have received a copy of the GNU Lesser General Public License
  * along with UWSLibrary.  If not, see <http://www.gnu.org/licenses/>.
  * 
- * Copyright 2012-2014 - UDS/Centre de Données astronomiques de Strasbourg (CDS),
+ * Copyright 2012-2015 - UDS/Centre de Données astronomiques de Strasbourg (CDS),
  *                       Astronomisches Rechen Institut (ARI)
  */
 
@@ -120,7 +120,7 @@ import uws.service.request.UploadFile;
  * </ul>
  * 
  * @author	Gr&eacute;gory Mantelet (CDS;ARI)
- * @version	4.1 (12/2014)
+ * @version	4.2 (05/2015)
  */
 public class UWSJob extends SerializableUWSObject {
 	private static final long serialVersionUID = 1L;
@@ -1526,21 +1526,9 @@ public class UWSJob extends SerializableUWSObject {
 	 * @throws UWSException	If at least one observer can not have been updated.
 	 */
 	public final void notifyObservers(ExecutionPhase oldPhase){
-		int i = 0;
-		JobObserver observer = null;
 		String errors = null;
-
-		while(i < observers.size()){
-			// Gets the observer:
-			if (i == 0 && observer == null)
-				observer = observers.get(i);
-			else if (observer.equals(observers.get(i))){
-				i++;
-				if (i < observers.size())
-					observer = observers.get(i);
-				else
-					return;
-			}
+		
+		for(JobObserver observer : observers){
 			// Update this observer:
 			try{
 				observer.update(this, oldPhase, getPhase());
