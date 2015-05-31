@@ -45,9 +45,7 @@ import uws.UWSExceptionFactory;
 import uws.UWSToolBox;
 import uws.job.ErrorSummary;
 import uws.job.ErrorType;
-import uws.job.ExecutionPhase;
 import uws.job.JobList;
-import uws.job.JobObserver;
 import uws.job.JobThread;
 import uws.job.Result;
 import uws.job.UWSJob;
@@ -60,8 +58,8 @@ import uws.job.serializer.JSONSerializer;
 import uws.job.serializer.UWSSerializer;
 import uws.job.serializer.XMLSerializer;
 import uws.job.user.JobOwner;
+import uws.service.actions.JobSummary;
 import uws.service.actions.UWSAction;
-import uws.service.actions.JobSummary.WaitObserver;
 import uws.service.backup.UWSBackupManager;
 import uws.service.error.DefaultUWSErrorWriter;
 import uws.service.error.ServiceErrorWriter;
@@ -73,6 +71,7 @@ import uws.service.log.UWSLog.LogLevel;
 import uws.service.request.RequestParser;
 import uws.service.request.UWSRequestParser;
 import uws.service.request.UploadFile;
+import uws.service.wait.BlockingPolicy;
 
 /**
  * <p>
@@ -135,7 +134,7 @@ import uws.service.request.UploadFile;
  * </p>
  * 
  * @author Gr&eacute;gory Mantelet (CDS;ARI)
- * @version 4.2 (03/2015)
+ * @version 4.2 (05/2015)
  */
 public abstract class UWSServlet extends HttpServlet implements UWS, UWSFactory {
 	private static final long serialVersionUID = 1L;
@@ -182,6 +181,14 @@ public abstract class UWSServlet extends HttpServlet implements UWS, UWSFactory 
 
 	/** Lets writing/formatting any exception/throwable in a HttpServletResponse. */
 	protected ServiceErrorWriter errorWriter;
+	
+	/** 
+	 * <p>Strategy to use for the blocking/wait process concerning the
+	 * {@link #doJobSummary(UWSUrl, HttpServletRequest, HttpServletResponse, JobOwner)} action.</p>
+	 * <p><i>If NULL, the standard strategy will be used: wait exactly the time asked by the user
+	 * (or indefinitely if none is specified).</i></p>
+	 * @since 4.2 */
+	protected BlockingPolicy waitPolicy = null;
 
 	@Override
 	public final void init(ServletConfig config) throws ServletException{
@@ -452,6 +459,40 @@ public abstract class UWSServlet extends HttpServlet implements UWS, UWSFactory 
 			UWSToolBox.deleteUploads(req);
 		}
 	}
+	
+	/* ***************** */
+	/* BLOCKING BEHAVIOR */
+	/* ***************** */
+
+	/**
+	 * <p>Get the currently used strategy for the blocking behavior of the Job Summary action.</p>
+	 * 
+	 * <p>This strategy lets decide how long a WAIT request must block a HTTP request.
+	 * With a such policy, the waiting time specified by the user may be modified.</p>
+	 * 
+	 * @return	The WAIT strategy, or NULL if the default one (i.e. wait the time specified by the user) is used.
+	 * 
+	 * @since 4.2
+	 */
+	public final BlockingPolicy getWaitPolicy() {
+		return waitPolicy;
+	}
+
+	/**
+	 * <p>Set the strategy to use for the blocking behavior of the Job Summary action.</p>
+	 * 
+	 * <p>This strategy lets decide whether a WAIT request must block a HTTP request and how long.
+	 * With a such policy, the waiting time specified by the user may be modified.</p>
+	 * 
+	 * @param waitPolicy	The WAIT strategy to use,
+	 *                  	or NULL if the default one (i.e. wait the time specified by the user ;
+	 *                  	if no time is specified the HTTP request may be blocked indefinitely) must be used.
+	 * 
+	 * @since 4.2
+	 */
+	public final void setWaitPolicy(final BlockingPolicy waitPolicy) {
+		this.waitPolicy = waitPolicy;
+	}
 
 	/* *********** */
 	/* UWS ACTIONS */
@@ -553,47 +594,8 @@ public abstract class UWSServlet extends HttpServlet implements UWS, UWSFactory 
 		// Get the job:
 		UWSJob job = getJob(requestUrl);
 		
-		/* TODO Finish the blocking behaviour!
-		 *      The blocking should stop when the request is aborted. */
-		
-		if (req.getParameter("WAIT") != null && (job.getPhase() == ExecutionPhase.PENDING || job.getPhase() == ExecutionPhase.QUEUED || job.getPhase() == ExecutionPhase.EXECUTING)){
-			synchronized(Thread.currentThread()){
-				WaitObserver observer = new WaitObserver(Thread.currentThread());
-				job.addObserver(observer);
-				long waitingTime = 0;
-				try{
-					waitingTime = Long.parseLong(req.getParameter("WAIT"));
-				}catch(NumberFormatException nfe){}
-				try{
-					if (waitingTime > 0)
-						Thread.currentThread().wait(waitingTime*1000);
-					else{
-						Thread.currentThread().wait(180000); // Wait 3 minutes before redirection
-						if ((job.getPhase() == ExecutionPhase.PENDING || job.getPhase() == ExecutionPhase.QUEUED || job.getPhase() == ExecutionPhase.EXECUTING)){
-							System.out.println("[DEBUG] REDIRECTION TO ITSELF ("+req.getRequestURL()+"?WAIT)"); // TODO DEBUG
-							resp.sendRedirect(req.getRequestURL()+"?WAIT"); // TODO TEST!
-							return;
-						}
-					}
-				}catch(Throwable t){
-					t.printStackTrace();
-				}finally{
-					job.removeObserver(observer);
-					System.out.println("[DEBUG] WAIT STOPPED!"); // TODO DEBUG
-					// TODO DEBUG
-					int countObservers = 0;
-					Iterator<JobObserver> it =job.getObservers();
-					while(it.hasNext()){
-						it.next();
-						countObservers++;
-					}
-					if (countObservers == 0)
-						System.out.println("[DEBUG] No more observers!");
-					else
-						System.err.println("[DEBUG] "+countObservers+" observers!");
-				}
-			}
-		}
+		// Block if necessary:
+		JobSummary.block(waitPolicy, req, job, user);
 
 		// Write the job summary:
 		UWSSerializer serializer = getSerializer(req.getHeader("Accept"));

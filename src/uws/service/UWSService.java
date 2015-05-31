@@ -62,6 +62,7 @@ import uws.service.log.DefaultUWSLog;
 import uws.service.log.UWSLog;
 import uws.service.log.UWSLog.LogLevel;
 import uws.service.request.RequestParser;
+import uws.service.wait.BlockingPolicy;
 
 /**
  * <h3>General description</h3>
@@ -186,7 +187,7 @@ import uws.service.request.RequestParser;
  * 
  * 
  * @author Gr&eacute;gory Mantelet (CDS;ARI)
- * @version 4.1 (02/2015)
+ * @version 4.2 (05/2015)
  */
 public class UWSService implements UWS {
 
@@ -244,6 +245,13 @@ public class UWSService implements UWS {
 
 	/** Lets writing/formatting any exception/throwable in a HttpServletResponse. */
 	protected ServiceErrorWriter errorWriter;
+	
+	/** 
+	 * <p>Strategy to use for the blocking/wait process concerning the {@link JobSummary} action.</p>
+	 * <p><i>If NULL, the standard strategy will be used: wait exactly the time asked by the user
+	 * (or indefinitely if none is specified).</i></p>
+	 * @since 4.2 */
+	protected BlockingPolicy waitPolicy = null;
 
 	/** Last generated request ID. If the next generated request ID is equivalent to this one,
 	 * a new one will generate in order to ensure the unicity.
@@ -584,6 +592,36 @@ public class UWSService implements UWS {
 	@Override
 	public final RequestParser getRequestParser(){
 		return requestParser;
+	}
+
+	/**
+	 * <p>Get the currently used strategy for the blocking behavior of the Job Summary action.</p>
+	 * 
+	 * <p>This strategy lets decide how long a WAIT request must block a HTTP request.
+	 * With a such policy, the waiting time specified by the user may be modified.</p>
+	 * 
+	 * @return	The WAIT strategy, or NULL if the default one (i.e. wait the time specified by the user) is used.
+	 * 
+	 * @since 4.2
+	 */
+	public final BlockingPolicy getWaitPolicy() {
+		return waitPolicy;
+	}
+
+	/**
+	 * <p>Set the strategy to use for the blocking behavior of the Job Summary action.</p>
+	 * 
+	 * <p>This strategy lets decide whether a WAIT request must block a HTTP request and how long.
+	 * With a such policy, the waiting time specified by the user may be modified.</p>
+	 * 
+	 * @param waitPolicy	The WAIT strategy to use,
+	 *                  	or NULL if the default one (i.e. wait the time specified by the user ;
+	 *                  	if no time is specified the HTTP request may be blocked indefinitely) must be used.
+	 * 
+	 * @since 4.2
+	 */
+	public final void setWaitPolicy(final BlockingPolicy waitPolicy) {
+		this.waitPolicy = waitPolicy;
 	}
 
 	/* ******************** */
