@@ -519,7 +519,9 @@ public class FunctionDef implements Comparable<FunctionDef> {
 		// If equals, compare the parameters' type:
 		if (comp == 0){
 			for(int i = 0; comp == 0 && i < nbParams && i < fct.getNbParameters(); i++){
-				if (params[i].type.isNumeric() == fct.getParameter(i).isNumeric()){
+				if (fct.getParameter(i).isNumeric() && fct.getParameter(i).isString() && fct.getParameter(i).isGeometry())
+					comp = 0;
+				else if (params[i].type.isNumeric() == fct.getParameter(i).isNumeric()){
 					if (params[i].type.isString() == fct.getParameter(i).isString()){
 						if (params[i].type.isGeometry() == fct.getParameter(i).isGeometry())
 							comp = 0;
