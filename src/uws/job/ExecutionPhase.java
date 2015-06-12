@@ -62,10 +62,12 @@ package uws.job;
  * @see UWSJob
  * 
  * @author Gr&eacute;gory Mantelet (CDS;ARI)
- * @version 4.2 (03/2015)
+ * @version 4.2 (06/2015)
  */
 public enum ExecutionPhase{
-	PENDING, QUEUED, EXECUTING, COMPLETED, ERROR, ABORTED, UNKNOWN, HELD, SUSPENDED, ARCHIVED;
+	PENDING, QUEUED, EXECUTING, COMPLETED, ERROR, ABORTED, UNKNOWN, HELD, SUSPENDED,
+	/** @since 4.2 */
+	ARCHIVED;
 
 	public static final String getStr(ExecutionPhase ph){
 		return (ph == null) ? ExecutionPhase.UNKNOWN.name() : ph.name();

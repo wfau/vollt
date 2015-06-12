@@ -30,7 +30,7 @@ import uws.UWSExceptionFactory;
  * and it describes the transitions between the different phases.
  * 
  * @author Gr&eacute;gory Mantelet (CDS;ARI)
- * @version 4.2 (03/2015)
+ * @version 4.2 (06/2015)
  * 
  * @see ExecutionPhase
  * @see UWSJob
@@ -286,6 +286,8 @@ public class JobPhase implements Serializable {
 	 * @param force			<i>true</i> to ignore the phases order, <i>false</i> otherwise.
 	 * 
 	 * @throws UWSException	By default, never!
+	 * 
+	 * @since 4.2
 	 */
 	protected void setArchivedPhase(boolean force) throws UWSException{
 		phase = ExecutionPhase.ARCHIVED;

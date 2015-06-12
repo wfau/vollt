@@ -30,7 +30,7 @@ import uws.service.UWSUrl;
  * You should have received a copy of the GNU Lesser General Public License
  * along with UWSLibrary.  If not, see <http://www.gnu.org/licenses/>.
  * 
- * Copyright 2012,2014 - UDS/Centre de Données astronomiques de Strasbourg (CDS),
+ * Copyright 2012-2015 - UDS/Centre de Données astronomiques de Strasbourg (CDS),
  *                       Astronomisches Rechen Institut (ARI)
  */
 
@@ -38,7 +38,7 @@ import uws.service.UWSUrl;
  * Let log any kind of message about a UWS service.
  * 
  * @author Gr&eacute;gory Mantelet (CDS;ARI)
- * @version 4.1 (12/2014)
+ * @version 4.2 (06/2015)
  */
 public interface UWSLog {
 
@@ -259,6 +259,7 @@ public interface UWSLog {
 	 * 	<li>START</li>
 	 * 	<li>ABORT</li>
 	 * 	<li>ERROR</li>
+	 * 	<li>ARCHIVE</li>
 	 * 	<li>EXECUTING</li>
 	 * 	<li>CHANGE_PHASE</li>
 	 * 	<li>NOTIFY</li>

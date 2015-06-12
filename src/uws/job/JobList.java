@@ -22,6 +22,7 @@ package uws.job;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -99,13 +100,91 @@ import uws.service.log.UWSLog.LogLevel;
  * 	if the jobs list is not managed by a UWS or {@link UWSService#setDestructionManager(DestructionManager)} otherwise.
  * </p>
  * 
+ * <h3>Job destruction policy</h3>
+ * 
+ * <p>
+ * 	Since UWS 1.1, it is possible to archive a job. The default behavior as explained in the UWS 1.1 document is that a job is archived
+ * 	when its destruction date is reached.
+ * </p>
+ * 
+ * <p>
+ * 	However the UWS Library proposes 2 other strategies: always delete a job (whatever its destruction date
+ * 	is reached or not ; default behavior in UWS 1.0), or always archive first. Thus, it is now possible to specify on a {@link JobList}
+ * 	instance which policy should be used. This can be done thanks to the function {@link #setDestructionPolicy(JobDestructionPolicy)} and
+ * 	with the enum class {@link JobDestructionPolicy}.
+ * </p>
+ * 
+ * <p>
+ * 	By default, the default behavior proposed by UWS 1.1 is set: {@link JobDestructionPolicy#ARCHIVE_ON_DATE}.
+ * </p>
+ * 
+ * <p><i>Note:
+ * 	An archived job can be destroyed definitely by calling again {@link #destroyJob(String)}.
+ * </i></p>
+ * 	
+ * 
  * @author Gr&eacute;gory Mantelet (CDS;ARI)
- * @version 4.2 (03/2015)
+ * @version 4.2 (06/2015)
  * 
  * @see UWSJob
  */
 public class JobList extends SerializableUWSObject implements Iterable<UWSJob> {
 	private static final long serialVersionUID = 1L;
+	
+	/**
+	 * <p>Behavior to apply when a job destruction is asked.</p>
+	 * 
+	 * <p>
+	 * 	This policy must be set individually on JobList instances.
+	 * 	Thus, the jobs lists of a UWS service may have a different behavior when a job destruction is required.
+	 * </p>
+	 * 
+	 * <p><i>Note:
+	 * 	This policy can be defined ONLY FROM UWS 1.1.
+	 * </i></p>
+	 * 
+	 * @author Gr&eacute;gory Mantelet (ARI)
+	 * @version 4.2 (06/2015)
+	 * @since 4.2
+	 * 
+	 * @since {@link JobList#destroyJob(String)}
+	 * @since {@link JobList#destroyJob(String, JobOwner)}
+	 */
+	public static enum JobDestructionPolicy {
+		/** Jobs are ALWAYS immediately destroyed and removed from the {@link JobList}. */
+		ALWAYS_DELETE,
+		/** 
+		 * <p>
+		 * 	Jobs are archived when a destruction is required AND the destruction date is reached.
+		 * 	The archived jobs are then still in the {@link JobList} but in the {@link ExecutionPhase#ARCHIVED} phase.
+		 * 	An archived job is stopped and all its resources (uploads, results and threads) are freed.
+		 * </p>
+		 * <p>
+		 * 	If the destruction date is yet not reached, the job is merely destroyed and removed from the {@link JobList}.
+		 * </p>
+		 * <p><i>Note:
+		 * 	Destroying an archived job will definitely destroy it. Thus, the real destruction of a job may be done
+		 * 	in 2 steps while using this policy.
+		 * </i></p>
+		 */
+		ARCHIVE_ON_DATE,
+		/**
+		 * <p>
+		 * 	Jobs are ALWAYS immediately archived when a destruction is required.
+		 * 	The archived jobs are then still in the {@link JobList} but in the {@link ExecutionPhase#ARCHIVED} phase.
+		 * 	An archived job is stopped and all its resources (uploads, results and threads) are freed.
+		 * </p>
+		 * <p><i>Note:
+		 * 	Destroying an archived job will definitely destroy it. Thus, the real destruction of a job must be done
+		 * 	in 2 steps while using this policy.
+		 * </i></p>
+		 */
+		ALWAYS_ARCHIVE;
+	}
+	
+	/** Default policy applied by a job list when a job destruction is asked.
+	 * @since 4.2 */
+	public final static JobDestructionPolicy DEFAULT_JOB_DESTRUCTION_POLICY = JobDestructionPolicy.ARCHIVE_ON_DATE;
 
 	/** <b>[Required]</b> Name of the jobs list. */
 	private final String name;
@@ -118,6 +197,14 @@ public class JobList extends SerializableUWSObject implements Iterable<UWSJob> {
 
 	/** The destruction manager to use to take into account the destructionTime field of contained jobs. */
 	private DestructionManager destructionManager = null;
+	
+	/** <p>Indicate how this job list behaves when a job destruction is asked.</p>
+	 * <p>
+	 * 	By default, in UWS 1.1, when a job destruction is asked, the job is archived if the destruction date is reached,
+	 * 	or is definitely destroyed otherwise.
+	 * </p>
+	 * @since 4.2 */
+	private JobDestructionPolicy destructionPolicy = JobDestructionPolicy.ARCHIVE_ON_DATE;
 
 	/** This object, if not null, decides whether a managed job can start immediately or must be put in a queue. */
 	private ExecutionManager executionManager = null;
@@ -321,6 +408,29 @@ public class JobList extends SerializableUWSObject implements Iterable<UWSJob> {
 				}
 			}
 		}
+	}
+
+	/**
+	 * Tell how this job list behaves when a job destruction is asked.
+	 * 
+	 * @return	The job destruction policy of this job list.
+	 * 
+	 * @since 4.2
+	 */
+	public final JobDestructionPolicy getDestroyPolicy() {
+		return destructionPolicy;
+	}
+
+	/**
+	 * Set how this job list must behave when a job destruction is asked.
+	 * 
+	 * @param destroyPolicy	The job destruction policy to set.
+	 *                     	<i>If NULL, the default policy (see {@link #DEFAULT_JOB_DESTRUCTION_POLICY}) will be set.</i>
+	 * 
+	 * @since 4.2
+	 */
+	public final void setDestructionPolicy(JobDestructionPolicy destroyPolicy) {
+		this.destructionPolicy = (destroyPolicy == null) ? DEFAULT_JOB_DESTRUCTION_POLICY : destroyPolicy;
 	}
 
 	/**
@@ -568,6 +678,60 @@ public class JobList extends SerializableUWSObject implements Iterable<UWSJob> {
 			return j.getJobId();
 		}
 	}
+	
+	/**
+	 * <p>Archive the specified job.</p>
+	 * 
+	 * <p>
+	 * 	Resources (i.e. threads and files) of an archived jobs are destroyed. Only the description is still available.
+	 * 	The job can not be executed any more. It is visible in the job list ONLY IF a filter on the {@link ExecutionPhase#ARCHIVED ARCHIVED} phase is set.
+	 * </p>
+	 * 
+	 * @param jobId		The ID of the job to archive.
+	 * 
+	 * @return			<i>true</i> if it has been successfully archived, <i>false</i> otherwise.
+	 */
+	public boolean archiveJob(final String jobId){
+		UWSJob job = getJob(jobId);
+		
+		if (job != null){
+			// Archive the job:
+			job.archive();
+			
+			// Save the owner jobs list:
+			if (job.getOwner() != null && uws.getBackupManager() != null)
+				uws.getBackupManager().saveOwner(job.getOwner());
+			
+			return true;
+		}else
+			return false;
+	}
+	
+	/**
+	 * <p>Archive the specified job.</p>
+	 * 
+	 * <p>
+	 * 	Resources (i.e. threads and files) of an archived jobs are destroyed. Only the description is still available.
+	 * 	The job can not be executed any more. It is visible in the job list ONLY IF a filter on the {@link ExecutionPhase#ARCHIVED ARCHIVED} phase is set.
+	 * </p>
+	 * 
+	 * @param jobId		The ID of the job to archive.
+	 * @param user		The user who asks to archive the specified job.
+	 * 
+	 * @return			<i>true</i> if it has been successfully archived, <i>false</i> otherwise.
+	 * 
+	 * @throws UWSException	If the given user is not allowed to update the content of this jobs list or to archive the specified job.
+	 */
+	public boolean archiveJob(final String jobId, final JobOwner user) throws UWSException {
+		if (user != null){
+			if (!user.hasWritePermission(this))
+				throw new UWSException(UWSException.PERMISSION_DENIED, UWSExceptionFactory.writePermissionDenied(user, true, getName()));
+			UWSJob job = getJob(jobId);
+			if (job != null && job.getOwner() != null && !user.equals(job.getOwner()) && !user.hasWritePermission(job))
+				throw new UWSException(UWSException.PERMISSION_DENIED, UWSExceptionFactory.writePermissionDenied(user, false, jobId));
+		}
+		return archiveJob(jobId);
+	}
 
 	/**
 	 * <p>Lets notifying the destruction manager of a possible modification of the destructionTime of the given job.</p>
@@ -625,26 +789,49 @@ public class JobList extends SerializableUWSObject implements Iterable<UWSJob> {
 	 * @see UWSJob#clearResources()
 	 * @see UWSService#getBackupManager()
 	 * @see UWSBackupManager#saveOwner(JobOwner)
+	 * @see #archiveJob(String)
 	 */
 	public boolean destroyJob(final String jobId){
-		// Remove the job:
-		UWSJob destroyedJob = removeJob(jobId);
+		
+		// Get the corresponding job and return immediately if none can be found:
+		UWSJob job = getJob(jobId);
+		if (job == null)
+			return false;
+		
+		// Determine whether the destruction date is already reached or not:
+		boolean dateReached = job.getDestructionTime() != null && job.getDestructionTime().compareTo(new Date()) >= 0;
+		
+		/* 3 policies are possible for a job destruction:
+		 *   a. ALWAYS_DELETE => whatever is the job destruction time or the job phase, the job is immediately destroyed.
+		 *   b. ALWAYS_ARCHIVE => the job is destroyed ONLY if its phase is already ARCHIVED OR if its destruction date is not yet reached.
+		 *                        Otherwise, the job is destroyed.
+		 *   c. ARCHIVE_ON_DATE => the job is destroyed ONLY IF the destruction is reached. Otherwise the job is archived.
+		 * 
+		 *  Which gives the 2 following cases: */
+		
+		// CASE 1: Destroy the job if already ARCHIVED, if ALWAYS_DELETE is the policy, or if the destruction date is not reached while the policy is ARCHIVE_ON_DATE:
+		if (job.getPhase() == ExecutionPhase.ARCHIVED || destructionPolicy == JobDestructionPolicy.ALWAYS_DELETE || (destructionPolicy == JobDestructionPolicy.ARCHIVE_ON_DATE && !dateReached)){
+			// Remove the job:
+			UWSJob destroyedJob = removeJob(jobId);
 
-		if (destroyedJob != null){
-			// Clear associated resources:
-			destroyedJob.clearResources();
+			if (destroyedJob != null){
+				// Clear associated resources:
+				destroyedJob.clearResources();
 
-			// Save the owner jobs list:
-			if (destroyedJob.getOwner() != null && uws.getBackupManager() != null)
-				uws.getBackupManager().saveOwner(destroyedJob.getOwner());
+				// Save the owner jobs list:
+				if (destroyedJob.getOwner() != null && uws.getBackupManager() != null)
+					uws.getBackupManager().saveOwner(destroyedJob.getOwner());
 
-			// Log this job destruction:
-			getLogger().logJob(LogLevel.INFO, destroyedJob, "DESTROY", "The job \"" + destroyedJob.getJobId() + "\" has been removed from the job list \"" + name + "\".", null);
+				// Log this job destruction:
+				getLogger().logJob(LogLevel.INFO, destroyedJob, "DESTROY", "The job \"" + destroyedJob.getJobId() + "\" has been removed from the job list \"" + name + "\".", null);
 
-			return true;
+				return true;
+			}
+			return false;
 		}
-
-		return false;
+		// CASE 2: Archive the job if not already ARCHIVED and if the policy is either ALWAYS_ARCHIVE or ARCHIVE_ON_DATE while the destruction date is reached: 
+		else
+			return archiveJob(jobId);
 	}
 
 	/**

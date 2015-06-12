@@ -1408,6 +1408,34 @@ public class UWSJob extends SerializableUWSObject {
 	protected final boolean isStopped(){
 		return thread == null || !thread.isAlive() || thread.isInterrupted() || thread.isFinished();
 	}
+	
+	/**
+	 * <p>Archive this job.</p>
+	 * 
+	 * <p>
+	 * 	An archive job can not be executed any more. All its associated resources (i.e. threads and files) are destroyed but
+	 * 	the description of the job stays unchanged (except the execution phase which will then be {@link ExecutionPhase#ARCHIVED}).
+	 * </p>
+	 * 
+	 * @return	<code>if this job has been successfully archived, <code>false</code> otherwise.
+	 * 
+	 * @throws UWSException	If any error occurs while clearing resources or changing the phase of this job.
+	 * 
+	 * @since 4.2
+	 */
+	public boolean archive() {
+		// Interrupt the corresponding thread and remove all other resources attached to this job:
+		clearResources();
+
+		// Change the phase:
+		try{
+			setPhase(ExecutionPhase.ARCHIVED);
+			return true;
+		}catch(UWSException ue){
+			getLogger().logJob(LogLevel.ERROR, this, "ARCHIVE", "Impossible to change the phase of this job into ARCHIVED!", ue);
+			return false;
+		}
+	}
 
 	/**
 	 * <p>Stops the job if running, removes the job from the execution manager, stops the timer for the execution duration
