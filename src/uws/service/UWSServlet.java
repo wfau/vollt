@@ -134,7 +134,7 @@ import uws.service.wait.BlockingPolicy;
  * </p>
  * 
  * @author Gr&eacute;gory Mantelet (CDS;ARI)
- * @version 4.2 (05/2015)
+ * @version 4.2 (06/2015)
  */
 public abstract class UWSServlet extends HttpServlet implements UWS, UWSFactory {
 	private static final long serialVersionUID = 1L;
@@ -390,6 +390,11 @@ public abstract class UWSServlet extends HttpServlet implements UWS, UWSFactory 
 					uwsAction = UWSAction.ADD_JOB;
 					doAddJob(requestUrl, req, resp, user);
 
+				}// DESTROY JOB:
+				else if (requestUrl.hasJobList() && requestUrl.hasJob() && UWSToolBox.hasParameter(UWSJob.PARAM_ACTION, UWSJob.ACTION_DELETE, req, false)){
+					uwsAction = UWSAction.DESTROY_JOB;
+					doDestroyJob(requestUrl, req, resp, user);
+
 				}// SET JOB's UWS STANDARD PARAMETER
 				else if (requestUrl.hasJobList() && requestUrl.hasJob() && requestUrl.getAttributes().length == 1 && requestUrl.getAttributes()[0].toLowerCase().matches(UWSParameters.UWS_RW_PARAMETERS_REGEXP) && UWSToolBox.hasParameter(requestUrl.getAttributes()[0], req, false)){
 					uwsAction = UWSAction.SET_UWS_PARAMETER;
@@ -399,11 +404,6 @@ public abstract class UWSServlet extends HttpServlet implements UWS, UWSFactory 
 				else if (requestUrl.hasJobList() && requestUrl.hasJob() && (!requestUrl.hasAttribute() || requestUrl.getAttributes().length == 1 && requestUrl.getAttributes()[0].equalsIgnoreCase(UWSJob.PARAM_PARAMETERS)) && UWSToolBox.getNbParameters(req) > 0){
 					uwsAction = UWSAction.SET_JOB_PARAM;
 					doSetJobParam(requestUrl, req, resp, user);
-
-				}// DESTROY JOB:
-				else if (requestUrl.hasJobList() && requestUrl.hasJob() && UWSToolBox.hasParameter(UWSJob.PARAM_ACTION, UWSJob.ACTION_DELETE, req, false)){
-					uwsAction = UWSAction.DESTROY_JOB;
-					doDestroyJob(requestUrl, req, resp, user);
 
 				}else
 					throw new UWSException(UWSException.NOT_IMPLEMENTED, "Unknown UWS action!");
@@ -1042,7 +1042,7 @@ public abstract class UWSServlet extends HttpServlet implements UWS, UWSFactory 
 		DestructionTimeController destructionController;
 		if (controller == null || !(controller instanceof DestructionTimeController)){
 			destructionController = new DestructionTimeController();
-			inputParamControllers.put(UWSJob.PARAM_DESTRUCTION_TIME, controller);
+			inputParamControllers.put(UWSJob.PARAM_DESTRUCTION_TIME, destructionController);
 		}else
 			destructionController = (DestructionTimeController)controller;
 
