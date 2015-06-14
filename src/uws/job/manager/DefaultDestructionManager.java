@@ -16,7 +16,7 @@ package uws.job.manager;
  * You should have received a copy of the GNU Lesser General Public License
  * along with UWSLibrary.  If not, see <http://www.gnu.org/licenses/>.
  * 
- * Copyright 2012,2014 - UDS/Centre de Données astronomiques de Strasbourg (CDS),
+ * Copyright 2012-2015 - UDS/Centre de Données astronomiques de Strasbourg (CDS),
  *                       Astronomisches Rechen Institut (ARI)
  */
 
@@ -27,6 +27,7 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.TreeSet;
 
+import uws.job.ExecutionPhase;
 import uws.job.UWSJob;
 
 /**
@@ -54,7 +55,7 @@ import uws.job.UWSJob;
  * </i></p>
  * 
  * @author Gr&eacute;gory Mantelet (CDS;ARI)
- * @version 4.1 (12/2014)
+ * @version 4.2 (06/2015)
  */
 public class DefaultDestructionManager implements DestructionManager {
 	private static final long serialVersionUID = 1L;
@@ -109,7 +110,7 @@ public class DefaultDestructionManager implements DestructionManager {
 	 * @see uws.job.JobList#destroyJob(String)
 	 */
 	protected final void destroyJob(UWSJob job){
-		if (job != null && job.getJobList() != null){
+		if (job != null && job.getJobList() != null && job.getPhase() != ExecutionPhase.ARCHIVED){
 			job.getJobList().destroyJob(job.getJobId());
 		}
 	}
@@ -167,7 +168,12 @@ public class DefaultDestructionManager implements DestructionManager {
 			// ...the time is elapsed:
 			if (currentDate.before(new Date()))
 				stop();
-
+			
+			// ...the job is already archived:
+			else if (currentJob.getPhase() == ExecutionPhase.ARCHIVED){
+				stop();
+				jobsToDestroy.remove(currentJob);
+			}
 			// ...the running timer is deprecated:
 			else if (!currentJob.getDestructionTime().equals(currentDate) || (!jobsToDestroy.isEmpty() && currentDate.after(jobsToDestroy.first().getDestructionTime()))){
 				jobsToDestroy.add(currentJob);
@@ -179,10 +185,12 @@ public class DefaultDestructionManager implements DestructionManager {
 		if (!isRunning()){
 			// get the next job on which a timer can be put:
 			currentJob = jobsToDestroy.pollFirst();
-			while(!jobsToDestroy.isEmpty() && (currentJob == null || currentJob.getDestructionTime() == null || currentJob.getDestructionTime().before(new Date()))){
-				if (currentJob.getDestructionTime() != null)
+			while(!jobsToDestroy.isEmpty() && (currentJob == null || currentJob.getPhase() == ExecutionPhase.ARCHIVED || currentJob.getDestructionTime() == null || currentJob.getDestructionTime().before(new Date()))){
+				if (currentJob.getPhase() == ExecutionPhase.ARCHIVED)
+					jobsToDestroy.remove(currentJob);
+				else if (currentJob.getDestructionTime() != null)
 					destroyJob(currentJob);
-				currentJob = jobsToDestroy.pollFirst();
+;				currentJob = jobsToDestroy.pollFirst();
 			}
 			// restart the timer:
 			if (currentJob != null){
@@ -212,7 +220,7 @@ public class DefaultDestructionManager implements DestructionManager {
 	 */
 	@Override
 	public synchronized void update(UWSJob job){
-		if (job != null && job.getJobList() != null && job.getDestructionTime() != null){
+		if (job != null && job.getJobList() != null && job.getDestructionTime() != null && job.getPhase() != ExecutionPhase.ARCHIVED){
 			if (job.getDestructionTime().before(new Date()))
 				destroyJob(job);
 			else{

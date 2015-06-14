@@ -799,7 +799,7 @@ public class JobList extends SerializableUWSObject implements Iterable<UWSJob> {
 			return false;
 		
 		// Determine whether the destruction date is already reached or not:
-		boolean dateReached = job.getDestructionTime() != null && job.getDestructionTime().compareTo(new Date()) >= 0;
+		boolean dateReached = job.getDestructionTime() != null && job.getDestructionTime().compareTo(new Date()) <= 0;
 		
 		/* 3 policies are possible for a job destruction:
 		 *   a. ALWAYS_DELETE => whatever is the job destruction time or the job phase, the job is immediately destroyed.

@@ -909,19 +909,26 @@ public class UWSJob extends SerializableUWSObject {
 			// Set the parameter:
 			inputParams.set(paramName, paramValue);
 
-			// If it is a file or an array containing files, they must be moved in a location related to this job:
-			try{
-				if (paramValue instanceof UploadFile)
-					((UploadFile)paramValue).move(this);
-				else if (paramValue.getClass().isArray()){
-					for(Object o : (Object[])paramValue){
-						if (o != null && o instanceof UploadFile)
-							((UploadFile)o).move(this);
+			// CASE DESTRUCTION_TIME: update the thread dedicated to the destruction:
+			if (paramName.equals(PARAM_DESTRUCTION_TIME)){
+				if (myJobList != null)
+					myJobList.updateDestruction(this);
+			}
+			// CASE: FILE Upload: If it is a file or an array containing files, they must be moved in a location related to this job:
+			else{
+				try{
+					if (paramValue instanceof UploadFile)
+						((UploadFile)paramValue).move(this);
+					else if (paramValue.getClass().isArray()){
+						for(Object o : (Object[])paramValue){
+							if (o != null && o instanceof UploadFile)
+								((UploadFile)o).move(this);
+						}
 					}
+				}catch(IOException ioe){
+					getLogger().logJob(LogLevel.WARNING, this, "MOVE_UPLOAD", "Can not move an uploaded file in the job \"" + jobId + "\"!", ioe);
+					return false;
 				}
-			}catch(IOException ioe){
-				getLogger().logJob(LogLevel.WARNING, this, "MOVE_UPLOAD", "Can not move an uploaded file in the job \"" + jobId + "\"!", ioe);
-				return false;
 			}
 
 			// Apply the retrieved phase:
@@ -1015,6 +1022,26 @@ public class UWSJob extends SerializableUWSObject {
 		applyPhaseParam(user);
 
 		return (updated.length == params.size());
+	}
+	
+	protected void refreshJobLinks(final String updatedParam){
+		// CASE DESTRUCTION_TIME: update the thread dedicated to the destruction:
+		if (updatedParam.equals(PARAM_DESTRUCTION_TIME)){
+			if (myJobList != null)
+				myJobList.updateDestruction(this);
+		}
+		// DEFAULT: test whether the parameter is a file, and if yes, move it in a location related to this job:
+		else{
+			Object newValue = inputParams.get(updatedParam);
+			if (newValue != null && newValue instanceof UploadFile){
+				try{
+					((UploadFile)newValue).move(this);
+				}catch(IOException ioe){
+					getLogger().logJob(LogLevel.WARNING, this, "MOVE_UPLOAD", "Can not move an uploaded file in the job \"" + jobId + "\"!", ioe);
+					inputParams.remove(updatedParam);
+				}
+			}
+		}
 	}
 
 	/**
@@ -1426,6 +1453,10 @@ public class UWSJob extends SerializableUWSObject {
 	public boolean archive() {
 		// Interrupt the corresponding thread and remove all other resources attached to this job:
 		clearResources();
+		
+		// Ensure this job is no longer in the destruction manager:
+		if (getJobList() != null && getJobList().getDestructionManager() != null)
+			getJobList().getDestructionManager().remove(this);
 
 		// Change the phase:
 		try{
