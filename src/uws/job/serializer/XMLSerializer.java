@@ -39,7 +39,7 @@ import uws.service.request.UploadFile;
  * Lets serializing any UWS resource in XML.
  * 
  * @author Gr&eacute;gory Mantelet (CDS;ARI)
- * @version 4.2 (03/2015)
+ * @version 4.2 (06/2015)
  */
 public class XMLSerializer extends UWSSerializer {
 	private static final long serialVersionUID = 1L;
@@ -177,12 +177,15 @@ public class XMLSerializer extends UWSSerializer {
 
 		UWSUrl jobsListUrl = jobsList.getUrl();
 		Iterator<UWSJob> it = jobsList.getJobs(owner);
+		UWSJob job= null;
 		if (phaseFilters == null || phaseFilters.length == 0){
-			while(it.hasNext())
-				xml.append("\n\t").append(getJobRef(it.next(), jobsListUrl));
+			while(it.hasNext()){
+				job = it.next();
+				if (job.getPhase() != ExecutionPhase.ARCHIVED)
+					xml.append("\n\t").append(getJobRef(job, jobsListUrl));
+			}
 		}else{
 			int p;
-			UWSJob job= null;
 			boolean toDisplay;
 			while(it.hasNext()){
 				job = it.next();
