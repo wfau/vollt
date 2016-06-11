@@ -1526,4 +1526,3 @@ public class DBChecker implements QueryChecker {
 	}
 
 }
-
