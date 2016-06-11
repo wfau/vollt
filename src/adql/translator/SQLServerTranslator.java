@@ -51,6 +51,8 @@ import adql.query.operand.function.geometry.IntersectsFunction;
 import adql.query.operand.function.geometry.PointFunction;
 import adql.query.operand.function.geometry.PolygonFunction;
 import adql.query.operand.function.geometry.RegionFunction;
+import adql.query.operand.function.CastFunction;
+import adql.query.operand.function.ADQLFunction;
 
 /**
  * <p>MS SQL Server translator.</p>
@@ -393,6 +395,35 @@ public class SQLServerTranslator extends JDBCTranslator {
 	@Override
 	public Object translateGeometryToDB(final Region region) throws ParseException{
 		throw new ParseException("Geometries can not be uploaded in the database in this implementation!");
+	}
+	
+	@Override
+	public String translate(final ADQLFunction function) throws TranslationException {
+		if (function instanceof CastFunction) {
+			return translate((CastFunction) function);
+		} else {
+			return super.translate(function);
+		}
+	}
+
+	/**
+	 * Translate a Cast Function
+	 * 
+	 * @param function
+	 * @return
+	 * @throws TranslationException
+	 */
+	public String translate(final CastFunction function) throws TranslationException {
+		final StringBuilder builder = new StringBuilder();
+
+		builder.append("CAST");
+		builder.append("(");
+		builder.append(translate(function.oper()));
+		builder.append(" AS ");
+		builder.append(function.type().name());
+		builder.append(")");
+
+		return builder.toString();
 	}
 
 }
