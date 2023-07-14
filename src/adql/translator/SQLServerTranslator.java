@@ -22,6 +22,7 @@ package adql.translator;
 
 import java.util.Iterator;
 
+import adql.db.DBTable;
 import adql.db.DBColumn;
 import adql.db.DBType;
 import adql.db.DBType.DBDatatype;
@@ -83,6 +84,11 @@ import adql.query.operand.function.geometry.RegionFunction;
  * @see SQLServer_ADQLQueryFactory
  */
 public class SQLServerTranslator extends JDBCTranslator {
+
+	/** SQLServer will default to length 1 for types such as CHAR, VARCHAR,
+	 * BINARY and VARBINARY if no length is defined. This static attribute is the default value set
+	 * by this translator if no length is specified. */
+	public static int DEFAULT_VARIABLE_LENGTH = 200;
 
 	/** <p>Indicate the case sensitivity to apply to each SQL identifier (only SCHEMA, TABLE and COLUMN).</p>
 	 *
@@ -263,6 +269,64 @@ public class SQLServerTranslator extends JDBCTranslator {
 
 		return sql.toString();
 	}
+
+    /**
+     * Override the {@link JDBCTranslator} method to add the catalog name.
+     *
+     */
+    @Override
+    public String getQualifiedSchemaName(final DBTable table)
+        {
+        if (table == null || table.getDBSchemaName() == null)
+            {
+            return "";
+            }
+        StringBuffer buf = new StringBuffer();
+
+        if (table.getDBCatalogName() != null)
+            {
+            appendIdentifier(
+                buf,
+                table.getDBCatalogName(),
+                IdentifierField.CATALOG
+                ).append('.');
+            }
+
+        appendIdentifier(
+            buf,
+            table.getDBSchemaName(),
+            IdentifierField.SCHEMA
+            );
+
+            return buf.toString();
+        }
+	/**
+     * Override the {@link JDBCTranslator} method to add [] the catalog name.
+	 *
+	 */
+    @Override
+	public String getQualifiedTableName(final DBTable table)
+        {
+		if (table == null)
+		    {
+			return "";
+            }
+		StringBuffer buf = new StringBuffer(
+            getQualifiedSchemaName(table)
+            );
+	    if (buf.length() > 0)
+            {
+	        buf.append(".dbo.");
+            }
+ 
+	    appendIdentifier(
+              buf,
+              table.getDBName(),
+              IdentifierField.TABLE
+            );
+
+            return buf.toString();
+	    }
 
 	/**
 	 * Generate an ADQL column of the given table and with the given metadata.
@@ -446,18 +510,20 @@ public class SQLServerTranslator extends JDBCTranslator {
 	@Override
 	public String convertTypeToDB(final DBType type){
 		if (type == null)
-			return "varchar";
+			return "varchar(" + DEFAULT_VARIABLE_LENGTH + ")";
 
 		switch(type.type){
 
 			case SMALLINT:
 			case REAL:
 			case BIGINT:
-			case CHAR:
-			case VARCHAR:
-			case BINARY:
-			case VARBINARY:
 				return type.type.toString().toLowerCase();
+
+                        case CHAR:
+                        case VARCHAR:
+                        case BINARY:
+                        case VARBINARY:
+				return type.type.toString() + "(" + (type.length > 0 ? type.length : DEFAULT_VARIABLE_LENGTH) + ")";
 
 			case INTEGER:
 				return "int";

@@ -644,8 +644,8 @@ public class VOTableFormat implements OutputFormat {
 		colInfo.setNullable(true);
 
 		// Set the XType (if any):
-		if (votType.xtype != null)
-			colInfo.setAuxDatum(new DescribedValue(VOStarTable.XTYPE_INFO, votType.xtype));
+		//if (votType.xtype != null)
+		//	colInfo.setAuxDatum(new DescribedValue(VOStarTable.XTYPE_INFO, votType.xtype));
 
 		// Set the additional information: unit, UCD and UType:
 		colInfo.setUnitString(tapCol.getUnit());
@@ -653,8 +653,8 @@ public class VOTableFormat implements OutputFormat {
 		colInfo.setUtype(tapCol.getUtype());
 
 		// Set the coosys ref (if any):
-		if (tapCol.getCoosys() != null)
-			colInfo.setAuxDatum(new DescribedValue(VOStarTable.REF_INFO, tapCol.getCoosys().getId()));
+		//if (tapCol.getCoosys() != null)
+		//	colInfo.setAuxDatum(new DescribedValue(VOStarTable.REF_INFO, tapCol.getCoosys().getId()));
 
 		return colInfo;
 	}
