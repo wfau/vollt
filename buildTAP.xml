@@ -2,22 +2,45 @@
 <!DOCTYPE project>
 <project name="tap" basedir="." default="buildLib">
 	
-	<property name="version" value="2.1" />
+	<property name="version" value="2.3" />
 
 	<property name="srcDir" value="src" />
+	<property name="testDir" value="test" />
 	<property name="libDir" value="lib" />
 	<property name="compileDir" value="antBuild" />
+	<property name="junitBuildDir" value="junitBuild" />
 	<property name="classesDir" value="${compileDir}"/>
 	<property name="javadocDir" value="javadoc/tap" />
 
-	<property name="cosJarName" value="cos-1.5beta.jar" />
-	<property name="cosJar" value="${libDir}/${cosJarName}" />
-	<property name="stilJarName" value="stil_3.0-11.jar" />
+	<property name="commonsIOJarName" value="commons-io-2.6.jar" />
+	<property name="commonsIOJar" value="${libDir}/${commonsIOJarName}" />
+	<property name="commonsFileUploadJarName" value="commons-fileupload-1.3.3.jar" />
+	<property name="commonsFileUploadJar" value="${libDir}/${commonsFileUploadJarName}" />
+	
+	<property name="stilJarName" value="stil_3.3-2.jar" />
 	<property name="stilJar" value="${libDir}/${stilJarName}" />
+
+	<property name="slf4jApiJarName" value="slf4j-api-1.7.25.jar" />
+	<property name="slf4jApiJar" value="${libDir}/${slf4jApiJarName}" />
+	
+	<property name="jsonJarName" value="json-20180813.jar" />
+	<property name="jsonJar" value="${libDir}/${jsonJarName}" />
+
+	<property name="sqliteJarName" value="sqlite-jdbc-3.16.1.jar" />
+	<property name="sqliteJar" value="${libDir}/${sqliteJarName}" />
+
+	<property name="h2JarName" value="h2-1.4.193.jar" />
+	<property name="h2Jar" value="${libDir}/${h2JarName}" />
+	<property name="jtsJarName" value="jts-core-1.14.0.jar" />
+	<property name="jtsJar" value="${libDir}/${jtsJarName}" />
+	<property name="spatial4jJarName" value="spatial4j-0.6.jar" />
+	<property name="spatial4jJar" value="${libDir}/${spatial4jJarName}" />
+	<property name="astroh2JarName" value="astroh2-0.3.jar" />
+	<property name="astroh2Jar" value="${libDir}/${astroh2JarName}" />
 		
 	<property name="tapPath" value="tap/**,adql/**,uws/**,cds/**" />
 	<property name="jsonPath" value="org/json/**" />
-	<property name="extLibsPath" value="com/oreilly/servlet/**,nom/tam/**,org/apache/tools/bzip2/**,uk/ac/starlink/**" />
+	<property name="extLibsPath" value="org/slf4j/**,org/apache/commons/fileupload/**,org/apache/commons/io/**,nom/tam/**,org/apache/tools/bzip2/**,edu/jhu/**,gov/fnal/eag/healpix/**,uk/ac/**" />
 	<property name="licensePath" value="COPYING.LESSER" />
 	<property name="includesList" value="${tapPath},${jsonPath},${extLibsPath}" />
 
@@ -32,6 +55,7 @@
 	<property name="adqlJunitReportsDir" value="reports/adql" />
 	<property name="uwsJunitReportsDir" value="reports/uws" />
 	<property name="tapJunitReportsDir" value="reports/tap" />
+	<property name="cdsJunitReportsDir" value="reports/cds" />
 	
 	<fail message="The property POSTGRES must be set! It provides the path toward a directory or a JAR which contains all classes inside org.postgresql.">
 		<condition><not><isset property="POSTGRES"/></not></condition>
@@ -49,21 +73,37 @@
 		<condition><not><isset property="JNDI-API"/></not></condition>
 	</fail>
 	
-
+	<!-- JAVA VERSION COMPATIBILITY -->
+	<property name="ant.build.javac.source" value="1.7"/>
+	<property name="ant.build.javac.target" value="1.7"/>
+	
 	<!-- CLASSPATHS -->
 	<path id="tap.classpath">
-		<pathelement location="${cosJar}" />
+		<pathelement location="${commonsIOJar}" />
+		<pathelement location="${commonsFileUploadJar}" />
+		<pathelement location="${slf4jApiJar}" />
 		<pathelement location="${jsonJar}" />
 		<pathelement location="${stilJar}" />
 		<pathelement location="${POSTGRES}" />
 		<pathelement location="${SERVLET-API}" />
 	</path>
 	
+	<path id="h2.classpath">
+		<pathelement location="${h2Jar}" />
+		<pathelement location="${jtsJar}" />
+		<pathelement location="${spatial4jJar}" />
+		<pathelement location="${astroh2Jar}" />
+	</path>
+	
 	<path id="junit.class.path">
-		<path refid="tap.classpath" />
 		<pathelement path="${JNDI-API}" />
 		<pathelement path="${JUNIT-API}" />
+			
+		<path refid="tap.classpath" />
 		<pathelement location="bin" />
+		
+		<path refid="h2.classpath" />
+		<pathelement location="${sqliteJar}" />
 	</path>
 	
 	<echo>TAP LIBRARY VERSION = ${version}</echo>
@@ -81,14 +121,20 @@
 		<delete dir="${adqlJunitReportsDir}" failonerror="false" />
 		<delete dir="${uwsJunitReportsDir}" failonerror="false" />
 		<delete dir="${tapJunitReportsDir}" failonerror="false" />
+		<delete dir="${cdsJunitReportsDir}" failonerror="false" />
 	</target>
 	
-	<target name="junitValidation" depends="cleanJUnitReports" description="Executes all JUnit tests before building the library and stop ANT at any error.">
+	<target name="junitValidation" depends="cleanJUnitReports,compileJUnit" description="Executes all JUnit tests before building the library and stop ANT at any error.">
 		<mkdir dir="${adqlJunitReportsDir}"/>
 		<mkdir dir="${uwsJunitReportsDir}"/>
 		<mkdir dir="${tapJunitReportsDir}"/>
-		<junit errorproperty="testsFailure" failureproperty="testsFailure">
+		<mkdir dir="${cdsJunitReportsDir}"/>
+		<junit fork="true" errorproperty="testsFailure" failureproperty="testsFailure">
 			<classpath refid="junit.class.path" />
+			<classpath>
+				<pathelement location="${compileDir}" />
+				<pathelement location="${junitBuildDir}" />
+			</classpath>
 			<formatter type="brief" usefile="yes" />
 			<batchtest todir="${adqlJunitReportsDir}">
 				<fileset dir="${testsDir}" includes="adql/**/Test*.java" />
@@ -99,8 +145,24 @@
 			<batchtest todir="${tapJunitReportsDir}">
 				<fileset dir="${testsDir}" includes="tap/**/Test*.java" />
 			</batchtest>
+			<batchtest todir="${cdsJunitReportsDir}">
+				<fileset dir="${testsDir}" includes="cds/**/Test*.java" />
+			</batchtest>
 		</junit>
+		<delete dir="${junitBuildDir}" failonerror="false" />
 		<fail if="${testsFailure}" message="Failed JUnit validation for ADQL, UWS or TAP Lib.!" />
+	</target>
+	
+	<target name="compileJUnit" depends="compileLib" description="Build all the classes to test the TAP library.">
+		<mkdir dir="${junitBuildDir}" />
+		<javac destdir="${junitBuildDir}" includes="${includesList}" includeantruntime="false" encoding="utf8" bootclasspath="${tap.bootclasspath}" debug="true">
+			<src path="${testDir}" />
+			<classpath refid="junit.class.path" />
+			<classpath refid="tap.classpath" />
+			<classpath>
+				<pathelement location="${compileDir}" />
+			</classpath>
+		</javac>
 	</target>
 			
 	<!-- LIB & SOURCES -->
@@ -108,25 +170,30 @@
 		<delete file="${libJarFile}" failonerror="false" />
 		<delete file="${srcJarFile}" failonerror="false" />
 		<delete dir="${compileDir}" failonerror="false" />
+		<delete dir="${junitBuildDir}" failonerror="false" />
 	</target>
 	
-	<target name="compileLib" depends="clean,junitValidation" description="Build all the classes of the TAP library. This target is particularly usefull because it lets highlighting missing dependencies.">
+	<target name="compileLib" depends="clean" description="Build all the classes of the TAP library. This target is particularly usefull because it lets highlighting missing dependencies.">
 		<mkdir dir="${compileDir}" />
 		<javac destdir="${compileDir}" srcdir="${srcDir}" includes="${includesList}" includeantruntime="false" encoding="utf8" debug="true">
 			<classpath refid="tap.classpath" />
 		</javac>
 	</target>
 	
-	<target name="buildLib" depends="compileLib" description="After 'clean', build the library JAR (only classes).">
+	<target name="buildLib" depends="compileLib,junitValidation" description="After 'clean', build the library JAR (only classes).">
 		<echo>Generate the library:</echo>
 		<jar basedir="${classesDir}" destfile="${libJarFileWithSTIL}" includes="${includesList}">
-			<zipfileset src="${cosJar}" excludes="META-INF/*" />
+			<zipfileset src="${jsonJar}" excludes="META-INF/*" />
+			<zipfileset src="${commonsIOJar}" excludes="META-INF/**" />
+			<zipfileset src="${commonsFileUploadJar}" excludes="META-INF/**" />
 			<zipfileset src="${stilJar}" excludes="META-INF/*" />
-			<zipfileset dir="src" includes="${licensePath}" />
+			<zipfileset dir="${srcDir}" includes="${licensePath}" />
 		</jar>
 		<jar basedir="${classesDir}" destfile="${libJarFile}" includes="${includesList}">
-			<zipfileset src="${cosJar}" excludes="META-INF/*" />
-			<zipfileset dir="src" includes="${licensePath}" />
+			<zipfileset src="${jsonJar}" excludes="META-INF/**" />
+			<zipfileset src="${commonsIOJar}" excludes="META-INF/**" />
+			<zipfileset src="${commonsFileUploadJar}" excludes="META-INF/**" />
+			<zipfileset dir="${srcDir}" includes="${licensePath}" />
 		</jar>
 		<delete dir="${compileDir}" failonerror="true" />
 	</target>
@@ -134,12 +201,16 @@
 	<target name="buildLibAndSrc" depends="buildLib" description="After 'clean' and 'buildLib', build the sources JAR (only .java).">
 		<jar compress="false" destfile="${srcJarFileWithSTIL}">
 			<zipfileset dir="${srcDir}" includes="${includesList},${licensePath}" prefix="${srcDir}" />
-			<zipfileset dir="${libDir}" includes="${cosJarName}" fullPath="${cosJar}" />
+			<zipfileset dir="${libDir}" includes="${jsonJarName}" fullPath="${jsonJar}" />
+			<zipfileset dir="${libDir}" includes="${commonsIOJarName}" fullPath="${commonsIOJar}" />
+			<zipfileset dir="${libDir}" includes="${commonsFileUploadJarName}" fullPath="${commonsFileUploadJar}" />
 			<zipfileset dir="${libDir}" includes="${stilJarName}" fullPath="${stilJar}" />
 		</jar>
 		<jar compress="false" destfile="${srcJarFile}">
 			<zipfileset dir="${srcDir}" includes="${includesList},${licensePath}" prefix="${srcDir}" />
-			<zipfileset dir="${libDir}" includes="${cosJarName}" fullPath="${cosJar}" />
+			<zipfileset dir="${libDir}" includes="${jsonJarName}" fullPath="${jsonJar}" />
+			<zipfileset dir="${libDir}" includes="${commonsIOJarName}" fullPath="${commonsIOJar}" />
+			<zipfileset dir="${libDir}" includes="${commonsFileUploadJarName}" fullPath="${commonsFileUploadJar}" />
 		</jar>
 	</target>
 	

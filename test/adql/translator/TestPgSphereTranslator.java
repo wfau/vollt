@@ -7,6 +7,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.sql.Types;
+import java.util.regex.Pattern;
 
 import org.junit.After;
 import org.junit.AfterClass;
@@ -19,6 +20,12 @@ import adql.db.DBType;
 import adql.db.DBType.DBDatatype;
 import adql.db.STCS.Region;
 import adql.parser.ParseException;
+import adql.query.operand.NumericConstant;
+import adql.query.operand.StringConstant;
+import adql.query.operand.function.geometry.CentroidFunction;
+import adql.query.operand.function.geometry.CircleFunction;
+import adql.query.operand.function.geometry.GeometryFunction;
+import adql.query.operand.function.geometry.GeometryFunction.GeometryValue;
 
 public class TestPgSphereTranslator {
 
@@ -33,6 +40,18 @@ public class TestPgSphereTranslator {
 
 	@After
 	public void tearDown() throws Exception{}
+
+	@Test
+	public void testTranslateCentroidFunction(){
+		try{
+			PgSphereTranslator translator = new PgSphereTranslator();
+			CentroidFunction centfc = new CentroidFunction(new GeometryValue<GeometryFunction>(new CircleFunction(new StringConstant("ICRS"), new NumericConstant(128.23), new NumericConstant(0.53), new NumericConstant(2))));
+			assertEquals("center(scircle(spoint(radians(128.23),radians(0.53)),radians(2)))", translator.translate(centfc));
+		}catch(Throwable t){
+			t.printStackTrace(System.err);
+			fail("An error occured while building a simple CentroidFunction! (see the console for more details)");
+		}
+	}
 
 	@Test
 	public void testConvertTypeFromDB(){
@@ -297,7 +316,8 @@ public class TestPgSphereTranslator {
 			pgo = (PGobject)translator.translateGeometryToDB(r);
 			assertNotNull(pgo);
 			assertEquals("spoly", pgo.getType());
-			assertEquals("{(46.2d,0.0d),(46.176942336483876d,0.2341083864193539d),(46.108655439013546d,0.4592201188381077d),(45.99776353476305d,0.6666842796235226d),(45.848528137423855d,0.8485281374238569d),(45.666684279623524d,0.9977635347630542d),(45.45922011883811d,1.1086554390135441d),(45.23410838641935d,1.1769423364838765d),(45.0d,1.2d),(44.76589161358065d,1.1769423364838765d),(44.54077988116189d,1.1086554390135441d),(44.333315720376476d,0.9977635347630543d),(44.151471862576145d,0.848528137423857d),(44.00223646523695d,0.6666842796235226d),(43.891344560986454d,0.4592201188381073d),(43.823057663516124d,0.23410838641935325d),(43.8d,-9.188564877424678E-16d),(43.823057663516124d,-0.23410838641935505d),(43.891344560986454d,-0.45922011883810904d),(44.00223646523695d,-0.6666842796235241d),(44.151471862576145d,-0.8485281374238584d),(44.333315720376476d,-0.9977635347630555d),(44.540779881161896d,-1.108655439013545d),(44.76589161358065d,-1.176942336483877d),(45.0d,-1.2d),(45.23410838641936d,-1.1769423364838758d),(45.45922011883811d,-1.1086554390135428d),(45.666684279623524d,-0.9977635347630521d),(45.84852813742386d,-0.8485281374238541d),(45.99776353476306d,-0.6666842796235192d),(46.108655439013546d,-0.45922011883810354d),(46.176942336483876d,-0.23410838641934922d)}", pgo.getValue());
+			Pattern fp8 = Pattern.compile("(\\.\\d{8})\\d+d");
+			assertEquals("{(46.2d,0.0d),(46.17694233d,0.23410838d),(46.10865543d,0.45922011d),(45.99776353d,0.66668427d),(45.84852813d,0.84852813d),(45.66668427d,0.99776353d),(45.45922011d,1.10865543d),(45.23410838d,1.17694233d),(45.0d,1.2d),(44.76589161d,1.17694233d),(44.54077988d,1.10865543d),(44.33331572d,0.99776353d),(44.15147186d,0.84852813d),(44.00223646d,0.66668427d),(43.89134456d,0.45922011d),(43.82305766d,0.23410838d),(43.8d,-9.188564877424678E-16d),(43.82305766d,-0.23410838d),(43.89134456d,-0.45922011d),(44.00223646d,-0.66668427d),(44.15147186d,-0.84852813d),(44.33331572d,-0.99776353d),(44.54077988d,-1.10865543d),(44.76589161d,-1.17694233d),(45.0d,-1.2d),(45.23410838d,-1.17694233d),(45.45922011d,-1.10865543d),(45.66668427d,-0.99776353d),(45.84852813d,-0.84852813d),(45.99776353d,-0.66668427d),(46.10865543d,-0.45922011d),(46.17694233d,-0.23410838d)}", fp8.matcher(pgo.getValue()).replaceAll("$1d"));
 
 			// BOX
 			r = new Region(null, new double[]{45,0}, 1.2, 5);

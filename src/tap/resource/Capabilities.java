@@ -2,21 +2,21 @@ package tap.resource;
 
 /*
  * This file is part of TAPLibrary.
- * 
+ *
  * TAPLibrary is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * TAPLibrary is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Lesser General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU Lesser General Public License
  * along with TAPLibrary.  If not, see <http://www.gnu.org/licenses/>.
- * 
- * Copyright 2012-2015 - UDS/Centre de Données astronomiques de Strasbourg (CDS),
+ *
+ * Copyright 2012-2016 - UDS/Centre de Données astronomiques de Strasbourg (CDS),
  *                       Astronomisches Rechen Institut (ARI)
  */
 
@@ -35,11 +35,11 @@ import uws.UWSToolBox;
 
 /**
  * <p>TAP resource describing the capabilities of a TAP service.</p>
- * 
+ *
  * <p>This resource just return an XML document giving a description of the TAP service and list all its VOSI resources.</p>
- * 
+ *
  * @author Gr&eacute;gory Mantelet (CDS;ARI)
- * @version 2.0 (04/2015)
+ * @version 2.1 (07/2016)
  */
 public class Capabilities implements TAPResource, VOSIResource {
 
@@ -52,18 +52,50 @@ public class Capabilities implements TAPResource, VOSIResource {
 
 	/** <p>URL toward this TAP resource.
 	 * This URL is particularly important for its declaration in the capabilities of the TAP service.</p>
-	 * 
+	 *
 	 * <p><i>Note: By default, it is just the name of this resource. It is updated after initialization of the service
 	 * when the TAP service base URL is communicated to its resources. Then, it is: baseTAPURL + "/" + RESOURCE_NAME.</i></p> */
 	protected String accessURL = getName();
 
+	/** The path of the XSLT style-sheet to apply.
+	 * @since 2.1 */
+	protected String xsltPath = null;
+
 	/**
 	 * Build a "/capabilities" resource.
-	 * 
+	 *
 	 * @param tap	Object representation of the whole TAP service.
 	 */
 	public Capabilities(final TAP tap){
 		this.tap = tap;
+	}
+
+	/**
+	 * Gets the path/URL of the XSLT style-sheet to use.
+	 *
+	 * @return	XSLT path/url.
+	 *
+	 * @since 2.1
+	 */
+	public final String getXSLTPath(){
+		return xsltPath;
+	}
+
+	/**
+	 * Sets the path/URL of the XSLT style-sheet to use.
+	 *
+	 * @param path	The new XSLT path/URL.
+	 *
+	 * @since 2.1
+	 */
+	public final void setXSLTPath(final String path){
+		if (path == null)
+			xsltPath = null;
+		else{
+			xsltPath = path.trim();
+			if (xsltPath.isEmpty())
+				xsltPath = null;
+		}
 	}
 
 	@Override
@@ -121,6 +153,11 @@ public class Capabilities implements TAPResource, VOSIResource {
 
 		// Write the XML document header:
 		out.println("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
+		if (xsltPath != null){
+			out.print("<?xml-stylesheet type=\"text/xsl\" ");
+			out.print(VOSerializer.formatAttribute("href", xsltPath));
+			out.println("?>");
+		}
 		out.print("<vosi:capabilities xmlns:vosi=\"http://www.ivoa.net/xml/VOSICapabilities/v1.0\"");
 		out.print(" xmlns:tr=\"http://www.ivoa.net/xml/TAPRegExt/v1.0\"");
 		out.print(" xmlns:vr=\"http://www.ivoa.net/xml/VOResource/v1.0\"");
@@ -154,9 +191,9 @@ public class Capabilities implements TAPResource, VOSIResource {
 
 	/**
 	 * Write the XML description of the given VOSI resource.
-	 * 
+	 *
 	 * @param res	Resource to describe in XML.
-	 * 
+	 *
 	 * @return	XML description of the given VOSI resource.
 	 */
 	public static final String getDefaultCapability(final VOSIResource res){
