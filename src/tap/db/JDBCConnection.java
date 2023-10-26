@@ -1822,7 +1822,7 @@ public class JDBCConnection implements DBConnection {
 
 		// b bis. Add the extra dbName column (giving the database name of a schema, table or column):
 		if ((supportsSchema && table.getADQLName().equalsIgnoreCase(STDTable.SCHEMAS.label)) || table.getADQLName().equalsIgnoreCase(STDTable.TABLES.label) || table.getADQLName().equalsIgnoreCase(STDTable.COLUMNS.label))
-			sql.append(',').append(DB_NAME_COLUMN).append(" VARCHAR(200)");
+			sql.append(',').append(DB_NAME_COLUMN).append(" VARCHAR(2048)");
 
 		// c. Append the primary key definition, if needed:
 		String primaryKey = getPrimaryKeyDef(table.getADQLName());

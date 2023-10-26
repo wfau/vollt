@@ -59,7 +59,7 @@ public class MySQLTranslator extends JDBCTranslator {
 	/** MySQL requires a length for variable-length types such as CHAR, VARCHAR,
 	 * BINARY and VARBINARY. This static attributes is the default value set
 	 * by this translator if no length is specified. */
-	public static int DEFAULT_VARIABLE_LENGTH = 200;
+	public static int DEFAULT_VARIABLE_LENGTH = 2048;
 
 	/** Indicate the case sensitivity to apply to each SQL identifier
 	 * (only SCHEMA, TABLE and COLUMN).
