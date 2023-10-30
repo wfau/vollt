@@ -300,33 +300,43 @@ public class SQLServerTranslator extends JDBCTranslator {
 
             return buf.toString();
         }
-	/**
-     * Override the {@link JDBCTranslator} method to add [] the catalog name.
-	 *
-	 */
-    @Override
-	public String getQualifiedTableName(final DBTable table)
+
+
+        @Override
+        public String getQualifiedTableName(final DBTable table)
         {
-		if (table == null)
-		    {
-			return "";
-            }
-		StringBuffer buf = new StringBuffer(
-            getQualifiedSchemaName(table)
-            );
-	    if (buf.length() > 0)
+            if (table == null)
             {
-	        buf.append(".dbo.");
+                return "";
             }
- 
-	    appendIdentifier(
+
+            StringBuffer buf = new StringBuffer(getQualifiedSchemaName(table));
+
+            // The exact string you want to match
+            String targetString = "TAP_SCHEMA";
+
+            // Check for an exact case-insensitive match
+            if (getQualifiedSchemaName(table).contains(targetString)) {
+
+                buf.append(".");
+
+            } else {
+
+                if (buf.length() > 0)
+                {
+                    buf.append(".dbo.");
+                }
+            }
+
+            appendIdentifier(
               buf,
               table.getDBName(),
               IdentifierField.TABLE
             );
 
             return buf.toString();
-	    }
+            }
+
 
 	/**
 	 * Generate an ADQL column of the given table and with the given metadata.
