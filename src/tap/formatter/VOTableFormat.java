@@ -693,7 +693,7 @@ public class VOTableFormat implements OutputFormat {
 			case SHORT:
 				return isScalar ? Short.class : short[].class;
 			case UNSIGNEDBYTE:
-				return isScalar ? Short.class : short[].class;
+				return isScalar ? String.class : String.class;
 			case CHAR:
 			case UNICODECHAR:
 			default: /* If the type is not know (theoretically, never happens), return char[*] by default. */

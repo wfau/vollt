@@ -66,10 +66,10 @@ public class TAPSyncJob {
 	/** Ultimate execution duration (in milliseconds) to use if not a single
 	 * alternative for this duration can be found.
 	 * @since 2.4 */
-	protected final long MAX_DURATION_FALLBACK = 10000;
+	protected final long MAX_DURATION_FALLBACK = 100000;
 
 	/** The time (in ms) to wait the end of the thread after an interruption. */
-	protected long waitForStop = 1000;
+	protected long waitForStop = 10000;
 
 	/** Last generated ID of a synchronous job. */
 	protected static String lastId = "S" + System.currentTimeMillis() + "A";
